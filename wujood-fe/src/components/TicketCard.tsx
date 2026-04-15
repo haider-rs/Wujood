@@ -146,7 +146,7 @@ export function TicketCard({ ticket, matchAddr, matchName, venue, dateString }: 
       {/* ── Coming Soon toast ── */}
       {notice && (
         <div
-          className="fixed top-5 right-5 z-50 w-80 rounded-xl shadow-2xl"
+          className="fixed top-20 right-5 z-[9999] w-80 rounded-xl shadow-2xl"   // ← changed here
           style={{
             background: "rgba(9,14,28,0.97)",
             border: "1px solid rgba(124,92,252,0.45)",
@@ -201,172 +201,172 @@ export function TicketCard({ ticket, matchAddr, matchName, venue, dateString }: 
       `}</style>
 
       <div
-      className={`relative card-glass rounded-xl overflow-hidden transition-all duration-300 ${ticket.used ? "opacity-45 grayscale" : "hover:-translate-y-0.5"
-        }`}
-      style={{ borderColor: ticket.used ? "var(--border)" : seatColor + "30" }}
-    >
-      <div className="h-[2px] w-full" style={{
-        background: ticket.used
-          ? "linear-gradient(90deg, var(--border), transparent)"
-          : `linear-gradient(90deg, ${seatColor}, #7C5CFC)`,
-      }} />
+        className={`relative card-glass rounded-xl overflow-hidden transition-all duration-300 ${ticket.used ? "opacity-45 grayscale" : "hover:-translate-y-0.5"
+          }`}
+        style={{ borderColor: ticket.used ? "var(--border)" : seatColor + "30" }}
+      >
+        <div className="h-[2px] w-full" style={{
+          background: ticket.used
+            ? "linear-gradient(90deg, var(--border), transparent)"
+            : `linear-gradient(90deg, ${seatColor}, #7C5CFC)`,
+        }} />
 
-      <div className="p-5">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="font-mono text-xs" style={{ color: "var(--muted)" }}>#{ticketIdStr}</span>
-              {ticket.used ? <span className="badge-used">USED</span> : <span className="badge-valid">VALID</span>}
-              <span className="badge-category">{categoryLabel(ticket.category).toUpperCase()}</span>
-              {isZkTicket && (
-                <span className="font-mono text-[9px] px-1.5 py-0.5 rounded"
-                  style={{ background: "rgba(124,92,252,0.15)", color: "#A78BFA", border: "1px solid #7C5CFC33" }}>
-                  ZK
-                </span>
-              )}
+        <div className="p-5">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span className="font-mono text-xs" style={{ color: "var(--muted)" }}>#{ticketIdStr}</span>
+                {ticket.used ? <span className="badge-used">USED</span> : <span className="badge-valid">VALID</span>}
+                <span className="badge-category">{categoryLabel(ticket.category).toUpperCase()}</span>
+                {isZkTicket && (
+                  <span className="font-mono text-[9px] px-1.5 py-0.5 rounded"
+                    style={{ background: "rgba(124,92,252,0.15)", color: "#A78BFA", border: "1px solid #7C5CFC33" }}>
+                    ZK
+                  </span>
+                )}
+              </div>
+              <div className="font-display font-bold text-white text-base truncate">{ticket.holderName || "—"}</div>
             </div>
-            <div className="font-display font-bold text-white text-base truncate">{ticket.holderName || "—"}</div>
+            {ticket.seat && (
+              <div className="px-3 py-2 rounded-lg text-center shrink-0"
+                style={{ border: `1px solid ${seatColor}35`, background: seatColor + "0E" }}>
+                <div className="font-condensed text-[10px] tracking-widest uppercase" style={{ color: "var(--muted)" }}>SEAT</div>
+                <div className="font-display font-bold text-sm tracking-wider mt-0.5" style={{ color: seatColor }}>{ticket.seat}</div>
+              </div>
+            )}
           </div>
-          {ticket.seat && (
-            <div className="px-3 py-2 rounded-lg text-center shrink-0"
-              style={{ border: `1px solid ${seatColor}35`, background: seatColor + "0E" }}>
-              <div className="font-condensed text-[10px] tracking-widest uppercase" style={{ color: "var(--muted)" }}>SEAT</div>
-              <div className="font-display font-bold text-sm tracking-wider mt-0.5" style={{ color: seatColor }}>{ticket.seat}</div>
+
+          {/* Match info */}
+          {(matchName || venue || dateString) && (
+            <div className="flex flex-col gap-1 mb-3 p-2.5 rounded-lg"
+              style={{ border: "1px solid var(--border)", background: "rgba(0,0,0,0.25)" }}>
+              {matchName && <div className="font-body font-semibold text-sm" style={{ color: "rgba(200,210,232,0.90)" }}>{matchName}</div>}
+              <div className="flex gap-3 flex-wrap">
+                {venue && <div className="font-body text-xs" style={{ color: "var(--muted)" }}>{venue}</div>}
+                {dateString && <div className="font-body text-xs" style={{ color: "var(--muted)" }}>{dateString}</div>}
+              </div>
+            </div>
+          )}
+
+          {!ticket.used && (
+            <>
+              {/* ZK actions */}
+              {isZkTicket && (
+                <div className="mb-2 flex flex-col gap-2">
+
+                  {proveStep === "idle" && qrStep !== "ready" && (
+                    <button onClick={showNotice}
+                      className="btn-outline w-full justify-center text-xs mb-2">
+                      SHOW ZK ENTRY QR
+                    </button>
+                  )}
+
+                  {/* Prove status */}
+                  {(proveStep === "proving" || proveStep === "submitting") && (
+                    <div className="flex items-center gap-3 p-3 rounded-lg"
+                      style={{ background: "rgba(124,92,252,0.08)", border: "1px solid #7C5CFC33" }}>
+                      <div className="spinner shrink-0" style={{ width: 16, height: 16 }} />
+                      <span className="font-mono text-xs" style={{ color: "#A78BFA" }}>{msg}</span>
+                    </div>
+                  )}
+                  {proveStep === "done" && (
+                    <div className="p-3 rounded-lg border border-green/30 bg-green/5">
+                      <p className="font-mono text-xs text-green">{msg}</p>
+                    </div>
+                  )}
+                  {proveStep === "error" && (
+                    <div className="p-3 rounded-lg border border-red/30 bg-red/5">
+                      <p className="font-mono text-xs text-red break-all">{msg}</p>
+                      <button onClick={() => { setProveStep("idle"); setMsg(""); }}
+                        className="font-mono text-xs text-muted mt-1 underline">Try again</button>
+                    </div>
+                  )}
+
+                  {/* Encrypted QR */}
+                  {qrStep === "ready" && qrValue && (
+                    <div className="flex flex-col items-center gap-3 p-4 rounded-xl"
+                      style={{ background: "#ffffff", border: "2px solid #7C5CFC44" }}>
+                      <div ref={qrRef}>
+                        <QRCodeSVG value={qrValue} size={200} level="M" bgColor="#ffffff" fgColor="#050810" />
+                      </div>
+                      <div className="text-center">
+                        <p className="font-mono text-xs font-bold" style={{ color: "#7C5CFC" }}>
+                          🔑 ENCRYPTED ENTRY QR
+                        </p>
+                        <p className="font-mono text-[10px] mt-1" style={{ color: "#6b7280" }}>
+                          This QR is your decryption key.<br />
+                          Verifier scans it on /verify → proof decrypted → entry approved.
+                        </p>
+                        <p className="font-mono text-[10px] mt-1" style={{ color: "#9ca3af" }}>
+                          Valid 30 minutes
+                        </p>
+                      </div>
+                      <div className="flex gap-2 w-full">
+                        <button onClick={handleDownload}
+                          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-mono"
+                          style={{ border: "1px solid #e5e7eb", background: "#f9fafb", color: "#6b7280" }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+                          </svg>
+                          SAVE
+                        </button>
+                        <button onClick={() => { setQrStep("idle"); setQrValue(null); }}
+                          className="flex-1 py-2 rounded-lg text-xs font-mono btn-outline">
+                          NEW QR
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {qrStep === "error" && (
+                    <div className="p-3 rounded-lg border border-red/30 bg-red/5">
+                      <p className="font-mono text-xs text-red">{msg}</p>
+                      <button onClick={() => { setQrStep("idle"); setMsg(""); }}
+                        className="font-mono text-xs text-muted mt-1 underline">Try again</button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Standard QR (non-ZK tickets) */}
+              {!isZkTicket && (
+                <button onClick={() => setShowQR(v => !v)} className="btn-outline w-full justify-center text-xs mb-2">
+                  {showQR ? "HIDE QR CODE" : "SHOW QR CODE"}
+                </button>
+              )}
+            </>
+          )}
+
+          {/* Standard QR panel */}
+          {showQR && !ticket.used && !isZkTicket && (
+            <div className="mt-2 flex flex-col items-center gap-3 p-4 rounded-xl"
+              style={{ background: "#ffffff", border: "1px solid #e5e7eb" }}>
+              <div ref={qrRef}>
+                <QRCodeSVG value={`${ticketIdStr}:${matchAddr}`} size={200} level="L" bgColor="#ffffff" fgColor="#050810" />
+              </div>
+              <p className="font-mono text-xs text-gray-400 text-center">#{ticketIdStr} · {ticket.seat}</p>
+              <button onClick={handleDownload}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-mono"
+                style={{ border: "1px solid #e5e7eb", background: "#f9fafb", color: "#6b7280" }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                DOWNLOAD QR
+              </button>
             </div>
           )}
         </div>
 
-        {/* Match info */}
-        {(matchName || venue || dateString) && (
-          <div className="flex flex-col gap-1 mb-3 p-2.5 rounded-lg"
-            style={{ border: "1px solid var(--border)", background: "rgba(0,0,0,0.25)" }}>
-            {matchName && <div className="font-body font-semibold text-sm" style={{ color: "rgba(200,210,232,0.90)" }}>{matchName}</div>}
-            <div className="flex gap-3 flex-wrap">
-              {venue && <div className="font-body text-xs" style={{ color: "var(--muted)" }}>{venue}</div>}
-              {dateString && <div className="font-body text-xs" style={{ color: "var(--muted)" }}>{dateString}</div>}
-            </div>
-          </div>
-        )}
-
-        {!ticket.used && (
-          <>
-            {/* ZK actions */}
-            {isZkTicket && (
-              <div className="mb-2 flex flex-col gap-2">
-
-                {proveStep === "idle" && qrStep !== "ready" && (
-                  <button onClick={showNotice}
-                    className="btn-outline w-full justify-center text-xs mb-2">
-                    SHOW ZK ENTRY QR
-                  </button>
-                )}
-
-                {/* Prove status */}
-                {(proveStep === "proving" || proveStep === "submitting") && (
-                  <div className="flex items-center gap-3 p-3 rounded-lg"
-                    style={{ background: "rgba(124,92,252,0.08)", border: "1px solid #7C5CFC33" }}>
-                    <div className="spinner shrink-0" style={{ width: 16, height: 16 }} />
-                    <span className="font-mono text-xs" style={{ color: "#A78BFA" }}>{msg}</span>
-                  </div>
-                )}
-                {proveStep === "done" && (
-                  <div className="p-3 rounded-lg border border-green/30 bg-green/5">
-                    <p className="font-mono text-xs text-green">{msg}</p>
-                  </div>
-                )}
-                {proveStep === "error" && (
-                  <div className="p-3 rounded-lg border border-red/30 bg-red/5">
-                    <p className="font-mono text-xs text-red break-all">{msg}</p>
-                    <button onClick={() => { setProveStep("idle"); setMsg(""); }}
-                      className="font-mono text-xs text-muted mt-1 underline">Try again</button>
-                  </div>
-                )}
-
-                {/* Encrypted QR */}
-                {qrStep === "ready" && qrValue && (
-                  <div className="flex flex-col items-center gap-3 p-4 rounded-xl"
-                    style={{ background: "#ffffff", border: "2px solid #7C5CFC44" }}>
-                    <div ref={qrRef}>
-                      <QRCodeSVG value={qrValue} size={200} level="M" bgColor="#ffffff" fgColor="#050810" />
-                    </div>
-                    <div className="text-center">
-                      <p className="font-mono text-xs font-bold" style={{ color: "#7C5CFC" }}>
-                        🔑 ENCRYPTED ENTRY QR
-                      </p>
-                      <p className="font-mono text-[10px] mt-1" style={{ color: "#6b7280" }}>
-                        This QR is your decryption key.<br />
-                        Verifier scans it on /verify → proof decrypted → entry approved.
-                      </p>
-                      <p className="font-mono text-[10px] mt-1" style={{ color: "#9ca3af" }}>
-                        Valid 30 minutes
-                      </p>
-                    </div>
-                    <div className="flex gap-2 w-full">
-                      <button onClick={handleDownload}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-mono"
-                        style={{ border: "1px solid #e5e7eb", background: "#f9fafb", color: "#6b7280" }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                          <polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
-                        </svg>
-                        SAVE
-                      </button>
-                      <button onClick={() => { setQrStep("idle"); setQrValue(null); }}
-                        className="flex-1 py-2 rounded-lg text-xs font-mono btn-outline">
-                        NEW QR
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {qrStep === "error" && (
-                  <div className="p-3 rounded-lg border border-red/30 bg-red/5">
-                    <p className="font-mono text-xs text-red">{msg}</p>
-                    <button onClick={() => { setQrStep("idle"); setMsg(""); }}
-                      className="font-mono text-xs text-muted mt-1 underline">Try again</button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Standard QR (non-ZK tickets) */}
-            {!isZkTicket && (
-              <button onClick={() => setShowQR(v => !v)} className="btn-outline w-full justify-center text-xs mb-2">
-                {showQR ? "HIDE QR CODE" : "SHOW QR CODE"}
-              </button>
-            )}
-          </>
-        )}
-
-        {/* Standard QR panel */}
-        {showQR && !ticket.used && !isZkTicket && (
-          <div className="mt-2 flex flex-col items-center gap-3 p-4 rounded-xl"
-            style={{ background: "#ffffff", border: "1px solid #e5e7eb" }}>
-            <div ref={qrRef}>
-              <QRCodeSVG value={`${ticketIdStr}:${matchAddr}`} size={200} level="L" bgColor="#ffffff" fgColor="#050810" />
-            </div>
-            <p className="font-mono text-xs text-gray-400 text-center">#{ticketIdStr} · {ticket.seat}</p>
-            <button onClick={handleDownload}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-mono"
-              style={{ border: "1px solid #e5e7eb", background: "#f9fafb", color: "#6b7280" }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              DOWNLOAD QR
-            </button>
+        {ticket.used && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="font-display font-black text-5xl tracking-widest select-none"
+              style={{ color: "#FF4757", opacity: 0.12, transform: "rotate(-22deg)" }}>USED</div>
           </div>
         )}
       </div>
-
-      {ticket.used && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="font-display font-black text-5xl tracking-widest select-none"
-            style={{ color: "#FF4757", opacity: 0.12, transform: "rotate(-22deg)" }}>USED</div>
-        </div>
-      )}
-    </div>
     </>
   );
 }
