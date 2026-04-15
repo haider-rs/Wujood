@@ -275,8 +275,17 @@ contract RewardsPoolTest is Test {
         assertEq(buyers.length, 3);
     }
 
+    // Helper: full commit-reveal-snapshot-draw flow in one call.
+    // secret must be the actual uint256 value; the commit hash is keccak256(abi.encode(secret)).
+    function _drawFull(RewardsPool rp, uint256 secret) internal {
+        rp.commitDraw(keccak256(abi.encode(secret)));
+        vm.roll(block.number + 6);   // satisfy COMMIT_DELAY = 5
+        rp.takeSnapshot();
+        rp.drawWinners(secret);
+    }
+
     function test_drawWinners() public {
-        rewards.drawWinners(42);
+        _drawFull(rewards, 42);
         assertTrue(rewards.drawn());
         address[3] memory w = rewards.getWinners();
         for (uint256 i = 0; i < 3; i++) {
@@ -285,11 +294,12 @@ contract RewardsPoolTest is Test {
     }
 
     function test_drawWinners_cannotDrawTwice() public {
-        rewards.drawWinners(42);
+        _drawFull(rewards, 42);
         vm.expectRevert("Already drawn");
-        rewards.drawWinners(99);
+        rewards.drawWinners(42);
     }
 
+    // UNCHANGED — onlyAdmin fires before any new require, so no flow change needed.
     function test_drawWinners_onlyAdmin() public {
         vm.prank(fan1);
         vm.expectRevert("Not admin");
@@ -306,8 +316,11 @@ contract RewardsPoolTest is Test {
         _buy(m, fan1, "X", "GEN-B-1");
         _buy(m, fan2, "Y", "GEN-B-2");
 
+        // The guard now lives in takeSnapshot(), not drawWinners().
+        rp2.commitDraw(keccak256(abi.encode(uint256(1))));
+        vm.roll(block.number + 6);
         vm.expectRevert("Need at least 3 tickets sold");
-        rp2.drawWinners(1);
+        rp2.takeSnapshot();
     }
 
     function test_fullDay3Flow() public {
@@ -334,7 +347,8 @@ contract RewardsPoolTest is Test {
         vm.prank(makeAddr("mod"));
         MatchTickets(m1).verifyAndEnter(pA, pB, pC, commitment, nullifierHash);
 
-        rewards.drawWinners(12345);
+        // Draw with full commit-reveal-snapshot flow.
+        _drawFull(rewards, 12345);
         assertTrue(rewards.drawn());
         address[3] memory w = rewards.getWinners();
         for (uint256 i = 0; i < 3; i++) {

@@ -45,12 +45,26 @@ contract MatchTickets {
     mapping(bytes32 => bool) public usedNullifiers;
     uint256 public zkTicketCount;
 
+    // FIX [TicketUsed(0) bug]: maps commitment → ticketId so verifyAndEnter
+    // can find and mark the correct ticket as used.
+    mapping(bytes32 => uint256) public commitmentToTicketId;
+
+    // FIX [toggleMatchActive enforcement]: paused flag controlled by factory/owner.
+    // New storage slot — no existing slot affected.
+    bool public paused;
+
+    // FIX [reentrancy]: inline guard (equivalent to OZ ReentrancyGuard).
+    // Using 1/2 instead of 0/1 to avoid cold-storage cost on first call.
+    uint256 private _reentrancyStatus = 1;
+
     event TicketPurchased(uint256 indexed ticketId, address indexed buyer, string holderName, TicketCategory category, string seat);
     event TicketUsed(uint256 indexed ticketId);
     event ZKTicketPurchased(bytes32 indexed commitment, string seat);
     event ZKEntryVerified(bytes32 indexed nullifierHash);
     event FundsWithdrawn(address indexed to, uint256 amount);
     event CategoryPriceUpdated(TicketCategory category, uint256 price);
+    // FIX [toggleMatchActive enforcement]: new event, no existing event changed.
+    event MatchPaused(bool paused);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Not owner");
@@ -60,6 +74,21 @@ contract MatchTickets {
     modifier onlyOwnerOrMod() {
         require(ITicketFactory(factory).isMod(msg.sender), "Not owner or mod");
         _;
+    }
+
+    // FIX [toggleMatchActive enforcement]: applied to buyTickets and buyTicketZK only.
+    // Gate functions do NOT check paused — staff can still verify/enter while sales are off.
+    modifier whenNotPaused() {
+        require(!paused, "Match is paused");
+        _;
+    }
+
+    // FIX [reentrancy]: modifier for payable state-changing functions.
+    modifier nonReentrant() {
+        require(_reentrancyStatus == 1, "Reentrant call");
+        _reentrancyStatus = 2;
+        _;
+        _reentrancyStatus = 1;
     }
 
     constructor(
@@ -88,6 +117,7 @@ contract MatchTickets {
     }
 
     // ── Pricing ───────────────────────────────────────────────────────────────
+    // Signatures unchanged.
 
     function setCategoryPrice(TicketCategory category, uint256 price) external onlyOwner {
         require(price > 0, "Price must be > 0");
@@ -108,6 +138,7 @@ contract MatchTickets {
     }
 
     // ── Seats ─────────────────────────────────────────────────────────────────
+    // Signatures unchanged.
 
     function isSeatTaken(string calldata seatLabel) external view returns (bool) {
         return seatTaken[keccak256(abi.encodePacked(seatLabel))];
@@ -122,13 +153,16 @@ contract MatchTickets {
     }
 
     // ── Standard Purchase (CNIC) ──────────────────────────────────────────────
+    // Signature unchanged.
+    // FIX [reentrancy]: added nonReentrant.
+    // FIX [toggleMatchActive]: added whenNotPaused.
 
     function buyTickets(
         string[]         calldata names,
         bytes32[]        calldata cnicHashes,
         TicketCategory[] calldata categories,
         string[]         calldata seatLabels
-    ) external payable {
+    ) external payable nonReentrant whenNotPaused {
         uint256 qty = names.length;
         require(qty > 0, "Must buy at least 1 ticket");
         require(qty == cnicHashes.length && qty == categories.length && qty == seatLabels.length, "Array length mismatch");
@@ -157,12 +191,18 @@ contract MatchTickets {
 
         uint256 refund = msg.value - totalCost;
         if (refund > 0) {
+            // nonReentrant guard above makes this safe.
             (bool ok,) = msg.sender.call{value: refund}("");
             require(ok, "Refund failed");
         }
     }
 
     // ── ZKP Purchase ──────────────────────────────────────────────────────────
+    // Signature unchanged.
+    // FIX [reentrancy]: added nonReentrant.
+    // FIX [toggleMatchActive]: added whenNotPaused.
+    // FIX [TicketUsed(0) bug]: stores commitmentToTicketId so verifyAndEnter
+    //      can resolve the correct ticket ID at entry time.
 
     function buyTicketZK(
         bytes32 commitment,
@@ -170,7 +210,7 @@ contract MatchTickets {
         bytes32 cnicHash,
         TicketCategory category,
         string calldata seatLabel
-    ) external payable {
+    ) external payable nonReentrant whenNotPaused {
         require(!commitments[commitment], "Commitment already exists");
         require(ticketsSold < totalTickets, "Sold out");
 
@@ -189,6 +229,10 @@ contract MatchTickets {
             cnicHash: cnicHash, category: category, seat: seatLabel, used: false
         });
         purchaserTickets[msg.sender].push(ticketId);
+
+        // FIX [TicketUsed(0) bug]: record which ticketId this commitment maps to.
+        commitmentToTicketId[commitment] = ticketId;
+
         ticketsSold++;
         zkTicketCount++;
 
@@ -203,6 +247,12 @@ contract MatchTickets {
     }
 
     // ── ZKP Entry ─────────────────────────────────────────────────────────────
+    // Signature unchanged.
+    // FIX [TicketUsed(0) bug]:
+    //   - Resolves ticketId from commitmentToTicketId instead of hardcoding 0.
+    //   - Marks tickets[ticketId].used = true so CNIC and ZK tickets both have
+    //     a consistent on-chain audit trail.
+    //   - Emits TicketUsed(ticketId) with the real ID.
 
     function verifyAndEnter(
         uint[2] calldata _pA,
@@ -222,11 +272,17 @@ contract MatchTickets {
         require(valid, "Invalid ZK proof");
 
         usedNullifiers[_nullifierHash] = true;
-        emit TicketUsed(0);
+
+        // FIX [TicketUsed(0) bug]: look up and mark the actual ticket.
+        uint256 ticketId = commitmentToTicketId[_commitment];
+        tickets[ticketId].used = true;
+
+        emit TicketUsed(ticketId);
         emit ZKEntryVerified(_nullifierHash);
     }
 
     // ── Standard Entry (CNIC) ─────────────────────────────────────────────────
+    // Signature unchanged.
 
     function useTicket(uint256 ticketId) external onlyOwnerOrMod {
         require(ticketId < ticketsSold, "Ticket does not exist");
@@ -236,8 +292,10 @@ contract MatchTickets {
     }
 
     // ── Admin ─────────────────────────────────────────────────────────────────
+    // Signatures unchanged.
+    // FIX [reentrancy]: added nonReentrant to withdrawFunds.
 
-    function withdrawFunds() external onlyOwner {
+    function withdrawFunds() external onlyOwner nonReentrant {
         uint256 bal = address(this).balance;
         require(bal > 0, "No funds to withdraw");
         (bool ok,) = owner.call{value: bal}("");
@@ -256,5 +314,21 @@ contract MatchTickets {
 
     function ticketsRemaining() external view returns (uint256) {
         return totalTickets - ticketsSold;
+    }
+
+    // ── New: pause control ────────────────────────────────────────────────────
+    // FIX [toggleMatchActive enforcement]: called by TicketFactory.toggleMatchActive.
+    // Must use onlyFactory — when TicketFactory calls this, msg.sender is the
+    // factory contract address, not the owner EOA, so onlyOwnerOrMod would fail.
+    // NEW function — no existing signature changed.
+
+    modifier onlyFactory() {
+        require(msg.sender == factory, "Not factory");
+        _;
+    }
+
+    function setPaused(bool _paused) external onlyFactory {
+        paused = _paused;
+        emit MatchPaused(_paused);
     }
 }

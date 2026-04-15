@@ -4,6 +4,12 @@ pragma solidity ^0.8.24;
 import {MatchTickets} from "./MatchTickets.sol";
 import {RewardsPool} from "./RewardsPool.sol";
 
+// FIX [toggleMatchActive enforcement]: factory needs to call setPaused on MatchTickets.
+// Interface is additive — no existing interface changed.
+interface IMatchTicketsPausable {
+    function setPaused(bool _paused) external;
+}
+
 contract TicketFactory {
     struct MatchInfo {
         string name;
@@ -38,6 +44,9 @@ contract TicketFactory {
     event MatchToggled(address indexed matchContract, bool active);
     event ModAdded(address indexed mod);
     event ModRemoved(address indexed mod);
+    // FIX [no ownership transfer]: new events — no existing event changed.
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event ZkVerifierUpdated(address indexed previousVerifier, address indexed newVerifier);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Not owner");
@@ -54,6 +63,7 @@ contract TicketFactory {
     }
 
     // ── Mod management ────────────────────────────────────────────────────────
+    // Signatures unchanged.
 
     function addMod(address mod) external onlyOwner {
         require(!mods[mod], "Already a mod");
@@ -84,6 +94,7 @@ contract TicketFactory {
     }
 
     // ── Match management ──────────────────────────────────────────────────────
+    // Signatures unchanged.
 
     /// Creates match with ZK verifier auto-wired + auto-registered in RewardsPool
     function createMatch(
@@ -98,7 +109,7 @@ contract TicketFactory {
         MatchTickets mt = new MatchTickets(
             owner,
             address(this),
-            zkVerifier, // ZK verifier auto-wired
+            zkVerifier,
             _name,
             _venue,
             _dateString,
@@ -110,7 +121,6 @@ contract TicketFactory {
 
         address addr = address(mt);
 
-        // Auto-register in RewardsPool — no manual step
         rewardsPool.addMatch(addr);
 
         matchAddresses.push(addr);
@@ -130,9 +140,15 @@ contract TicketFactory {
         return addr;
     }
 
+    // FIX [toggleMatchActive enforcement]: now calls setPaused on the MatchTickets
+    // contract so the pause is actually enforced on-chain.
+    // Signature UNCHANGED — toggleMatchActive(address) stays the same.
+
     function toggleMatchActive(address matchAddr) external onlyOwner {
         require(matchInfo[matchAddr].contractAddr != address(0), "Match not found");
         matchInfo[matchAddr].active = !matchInfo[matchAddr].active;
+        // Push the pause state into the MatchTickets contract itself.
+        IMatchTicketsPausable(matchAddr).setPaused(!matchInfo[matchAddr].active);
         emit MatchToggled(matchAddr, matchInfo[matchAddr].active);
     }
 
@@ -146,5 +162,35 @@ contract TicketFactory {
 
     function getMatchCount() external view returns (uint256) {
         return matchAddresses.length;
+    }
+
+    // ── New: ownership transfer ───────────────────────────────────────────────
+    // FIX [no ownership transfer]: NEW function — no existing signature changed.
+    // Allows key rotation without redeployment. Two-step (transfer → accept)
+    // pattern prevents accidentally locking to a wrong address.
+
+    address public pendingOwner;
+
+    function transferOwnership(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "Zero address");
+        pendingOwner = newOwner;
+    }
+
+    function acceptOwnership() external {
+        require(msg.sender == pendingOwner, "Not pending owner");
+        emit OwnershipTransferred(owner, pendingOwner);
+        owner = pendingOwner;
+        pendingOwner = address(0);
+    }
+
+    // ── New: ZK verifier update ───────────────────────────────────────────────
+    // FIX [no zkVerifier update]: NEW function — no existing signature changed.
+    // Only affects newly created matches; existing matches keep their verifier.
+    // To migrate an existing match, redeploy that match.
+
+    function updateZkVerifier(address newVerifier) external onlyOwner {
+        require(newVerifier != address(0), "Zero address");
+        emit ZkVerifierUpdated(zkVerifier, newVerifier);
+        zkVerifier = newVerifier;
     }
 }

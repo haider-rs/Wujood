@@ -18,7 +18,8 @@
     along with snarkJS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-pragma solidity >=0.7.0 <0.9.0;
+// FIX [pragma]: pinned from >=0.7.0 <0.9.0 → ^0.8.24 to match all other contracts
+pragma solidity ^0.8.24;
 
 contract Groth16Verifier {
     // Scalar field size
@@ -59,6 +60,7 @@ contract Groth16Verifier {
 
     uint16 constant pLastMem = 896;
 
+    // FIX [pragma]: signature unchanged — verifyProof(uint[2],uint[2][2],uint[2],uint[2]) stays identical
     function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[2] calldata _pubSignals) public view returns (bool) {
         assembly {
             function checkField(v) {
