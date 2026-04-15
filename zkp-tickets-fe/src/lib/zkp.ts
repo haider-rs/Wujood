@@ -58,7 +58,7 @@ export function proofToHex(proof: any): string {
     fe(proof.pi_a[0]) + fe(proof.pi_a[1]) +
     fe(proof.pi_b[0][1]) + fe(proof.pi_b[0][0]) +
     fe(proof.pi_b[1][1]) + fe(proof.pi_b[1][0]) +
-    fe(proof.pi_c[0])    + fe(proof.pi_c[1])
+    fe(proof.pi_c[0]) + fe(proof.pi_c[1])
   );
 }
 
@@ -85,7 +85,7 @@ export interface ZKProofPayload {
   proofHex: string; // 512 hex chars
 }
 
-function hexToBytes(hex: string): Uint8Array {
+function hexToBytes(hex: string): Uint8Array<ArrayBuffer> {
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < bytes.length; i++)
     bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
@@ -112,8 +112,8 @@ async function deriveKey(secretHex: string): Promise<CryptoKey> {
 /** Encrypt proof payload with secret. Returns base64(iv + ciphertext) */
 export async function encryptProof(payload: ZKProofPayload, secretHex: string): Promise<string> {
   const key = await deriveKey(secretHex);
-  const iv  = crypto.getRandomValues(new Uint8Array(12));
-  const ct  = await crypto.subtle.encrypt(
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt(
     { name: "AES-GCM", iv },
     key,
     new TextEncoder().encode(JSON.stringify(payload))
@@ -128,7 +128,7 @@ export async function encryptProof(payload: ZKProofPayload, secretHex: string): 
 export async function decryptProof(encryptedB64: string, secretHex: string): Promise<ZKProofPayload> {
   const combined = Uint8Array.from(atob(encryptedB64), c => c.charCodeAt(0));
   const key = await deriveKey(secretHex);
-  const pt  = await crypto.subtle.decrypt(
+  const pt = await crypto.subtle.decrypt(
     { name: "AES-GCM", iv: combined.slice(0, 12) },
     key,
     combined.slice(12)

@@ -11,12 +11,8 @@ import { useRole } from "@/context/RoleContext";
 import { FACTORY_ADDRESS } from "@/config/wagmi";
 import { showToast } from "@/components/Toast";
 
-export const TICKET_CATEGORIES = ["General", "Enclosure", "VIP"] as const;
-export type TicketCategoryLabel = (typeof TICKET_CATEGORIES)[number];
-export const CATEGORY_INDEX: Record<TicketCategoryLabel, number> = { General: 0, Enclosure: 1, VIP: 2 };
-export function categoryLabel(index: number): string {
-  return TICKET_CATEGORIES[index] ?? `Category ${index}`;
-}
+import { TICKET_CATEGORIES, CATEGORY_INDEX, categoryLabel } from "@/config/tickets";
+import type { TicketCategoryLabel } from "@/config/tickets";
 
 // Format YYYY-MM-DD → "April 15, 2026"
 function formatDateDisplay(iso: string): string {
@@ -133,9 +129,9 @@ function CreateMatchPanel() {
           </label>
           <div className="space-y-2">
             {([
-              { label: "General",   key: "generalPrice",   hint: "Main stands" },
+              { label: "General", key: "generalPrice", hint: "Main stands" },
               { label: "Enclosure", key: "enclosurePrice", hint: "Covered seating" },
-              { label: "VIP",       key: "vipPrice",       hint: "Premium lounge" },
+              { label: "VIP", key: "vipPrice", hint: "Premium lounge" },
             ] as { label: string; key: keyof CreateForm; hint: string }[]).map(({ label, key, hint }) => (
               <div key={key} className="flex items-center gap-3 p-3 rounded bg-surface border border-border">
                 <div className="flex-1 min-w-0">
@@ -287,11 +283,11 @@ function MatchAdminCard({ matchAddr }: { matchAddr: `0x${string}` }) {
   const mc = { address: matchAddr, abi: MATCH_TICKETS_ABI } as const;
   const fc = { address: FACTORY_ADDRESS, abi: TICKET_FACTORY_ABI } as const;
 
-  const { data: matchName }    = useReadContract({ ...mc, functionName: "matchName",    query: { staleTime: Infinity, gcTime: Infinity } });
-  const { data: ticketsSold }  = useReadContract({ ...mc, functionName: "ticketsSold",  query: { staleTime: Infinity, gcTime: Infinity } });
+  const { data: matchName } = useReadContract({ ...mc, functionName: "matchName", query: { staleTime: Infinity, gcTime: Infinity } });
+  const { data: ticketsSold } = useReadContract({ ...mc, functionName: "ticketsSold", query: { staleTime: Infinity, gcTime: Infinity } });
   const { data: totalTickets } = useReadContract({ ...mc, functionName: "totalTickets", query: { staleTime: Infinity, gcTime: Infinity } });
-  const { data: allPrices }    = useReadContract({ ...mc, functionName: "getAllPrices", query: { staleTime: Infinity, gcTime: Infinity } });
-  const { data: info }         = useReadContract({ ...fc, functionName: "getMatchInfo", args: [matchAddr], query: { staleTime: Infinity, gcTime: Infinity } });
+  const { data: allPrices } = useReadContract({ ...mc, functionName: "getAllPrices", query: { staleTime: Infinity, gcTime: Infinity } });
+  const { data: info } = useReadContract({ ...fc, functionName: "getMatchInfo", args: [matchAddr], query: { staleTime: Infinity, gcTime: Infinity } });
 
   const prices = allPrices as [bigint, bigint, bigint] | undefined;
   const isActive = (info as any)?.active ?? true;

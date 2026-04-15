@@ -31,9 +31,9 @@ type VerifyState =
   | { status: "error"; reason: string };
 
 const MODE_CONFIG: { mode: VerifyMode; label: string; desc: string; color: string }[] = [
-  { mode: "cnic",  label: "CNIC VERIFY", desc: "Scan QR + match CNIC hash", color: "#0EA5E9" },
-  { mode: "quick", label: "QUICK SCAN",  desc: "Auto-approve on scan",      color: "#00E87A" },
-  { mode: "zkp",   label: "ZKP VERIFY",  desc: "Zero-knowledge proof",      color: "#7C5CFC" },
+  { mode: "cnic", label: "CNIC VERIFY", desc: "Scan QR + match CNIC hash", color: "#0EA5E9" },
+  { mode: "quick", label: "QUICK SCAN", desc: "Auto-approve on scan", color: "#00E87A" },
+  { mode: "zkp", label: "ZKP VERIFY", desc: "Zero-knowledge proof", color: "#7C5CFC" },
 ];
 
 const STALE = { query: { staleTime: 30_000 } } as const;
@@ -104,9 +104,9 @@ export default function VerifyPage() {
 
     } catch (e) {
       const msg = e instanceof Error ? e.message : "ZKP verification failed";
-      if (msg.includes("Nullifier already used"))  setState({ status: "error", reason: "Nullifier already used — this proof was already consumed." });
+      if (msg.includes("Nullifier already used")) setState({ status: "error", reason: "Nullifier already used — this proof was already consumed." });
       else if (msg.includes("Unknown commitment")) setState({ status: "error", reason: "Unknown commitment — ticket was not purchased with ZKP." });
-      else if (msg.includes("Invalid ZK proof"))   setState({ status: "error", reason: "Invalid ZK proof — cryptographic verification failed." });
+      else if (msg.includes("Invalid ZK proof")) setState({ status: "error", reason: "Invalid ZK proof — cryptographic verification failed." });
       else setState({ status: "error", reason: msg });
       showToast(msg);
     }
@@ -135,7 +135,7 @@ export default function VerifyPage() {
         publicClient!.readContract({ address: matchAddr, abi: MATCH_TICKETS_ABI, functionName: "matchName" }),
       ]);
 
-      const t = ticketData as { holderName: string; cnicHash: `0x${string}`; category: string; seat: string; used: boolean };
+      const t = ticketData as unknown as { holderName: string; cnicHash: `0x${string}`; category: string; seat: string; used: boolean };
 
       if (t.used) {
         setState({ status: "already_used", holderName: t.holderName, category: t.category, seat: t.seat });
