@@ -457,6 +457,7 @@ export const MATCH_TICKETS_ABI = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const REWARDS_POOL_ABI = [
+  // ── Views ─────────────────────────────────────────────────────────────────
   {
     inputs: [],
     name: "admin",
@@ -465,17 +466,10 @@ export const REWARDS_POOL_ABI = [
     type: "function",
   },
   {
-    inputs: [{ name: "matchAddr", type: "address" }],
-    name: "addMatch",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "seed", type: "uint256" }],
-    name: "drawWinners",
-    outputs: [],
-    stateMutability: "nonpayable",
+    inputs: [],
+    name: "factory",
+    outputs: [{ name: "", type: "address" }],
+    stateMutability: "view",
     type: "function",
   },
   {
@@ -506,19 +500,32 @@ export const REWARDS_POOL_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  // ── Admin ─────────────────────────────────────────────────────────────────
+  {
+    inputs: [{ name: "seed", type: "uint256" }],
+    name: "drawWinners",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  // ── Factory-only ──────────────────────────────────────────────────────────
+  {
+    inputs: [{ name: "matchAddr", type: "address" }],
+    name: "addMatch",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  // ── Events ────────────────────────────────────────────────────────────────
   {
     anonymous: false,
-    inputs: [
-      { indexed: false, name: "winners", type: "address[3]" },
-    ],
+    inputs: [{ indexed: false, name: "winners", type: "address[3]" }],
     name: "WinnersDrawn",
     type: "event",
   },
   {
     anonymous: false,
-    inputs: [
-      { indexed: true, name: "matchContract", type: "address" },
-    ],
+    inputs: [{ indexed: true, name: "matchContract", type: "address" }],
     name: "MatchRegistered",
     type: "event",
   },

@@ -7,7 +7,6 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount, useDisconnect } from "wagmi";
 import { useRole } from "@/context/RoleContext";
 
-/* ── Wallet dropdown ────────────────────────────────────────── */
 function WalletButton({ openConnectModal }: { openConnectModal: () => void }) {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
@@ -24,11 +23,7 @@ function WalletButton({ openConnectModal }: { openConnectModal: () => void }) {
 
   if (!isConnected || !address) {
     return (
-      <button
-        onClick={openConnectModal}
-        className="btn-primary py-2 px-5 text-xs"
-        style={{ padding: "8px 18px", fontSize: 12 }}
-      >
+      <button onClick={openConnectModal} className="btn-primary" style={{ padding: "8px 18px", fontSize: 12 }}>
         CONNECT WALLET
       </button>
     );
@@ -38,34 +33,24 @@ function WalletButton({ openConnectModal }: { openConnectModal: () => void }) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-2 px-3 py-2 rounded-md transition-all group"
-        style={{
-          border: "1px solid rgba(124,92,252,0.30)",
-          background: "rgba(124,92,252,0.06)",
-        }}
+        className="flex items-center gap-2 px-3 py-2 rounded-md transition-all"
+        style={{ border: "1px solid rgba(124,92,252,0.30)", background: "rgba(124,92,252,0.06)" }}
         onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(124,92,252,0.60)")}
         onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(124,92,252,0.30)")}
       >
-        <div
-          className="w-2 h-2 rounded-full"
-          style={{ background: "#00E87A", boxShadow: "0 0 6px #00E87A" }}
-        />
+        <div className="w-2 h-2 rounded-full" style={{ background: "#00E87A", boxShadow: "0 0 6px #00E87A" }} />
         <span className="font-mono text-xs" style={{ color: "rgba(200,210,232,0.85)" }}>
           {address.slice(0, 6)}…{address.slice(-4)}
         </span>
-        <svg
-          width="10" height="10" viewBox="0 0 10 10" fill="none"
-          style={{ color: "var(--muted)", transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "" }}
-        >
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"
+          style={{ color: "var(--muted)", transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "" }}>
           <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
 
       {open && (
-        <div
-          className="absolute right-0 top-full mt-2 w-56 rounded-lg overflow-hidden z-50"
-          style={{ border: "1px solid var(--border)", background: "var(--card)", boxShadow: "0 16px 48px rgba(0,0,0,0.7), 0 0 0 1px rgba(124,92,252,0.08)" }}
-        >
+        <div className="absolute right-0 top-full mt-2 w-56 rounded-lg overflow-hidden z-50"
+          style={{ border: "1px solid var(--border)", background: "var(--card)", boxShadow: "0 16px 48px rgba(0,0,0,0.7)" }}>
           <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
             <p className="font-mono text-xs mb-1" style={{ color: "var(--muted)" }}>CONNECTED</p>
             <p className="font-mono text-xs break-all" style={{ color: "var(--text)" }}>{address}</p>
@@ -90,31 +75,26 @@ function WalletButton({ openConnectModal }: { openConnectModal: () => void }) {
   );
 }
 
-/* ── Nav links ──────────────────────────────────────────────── */
 const BASE_LINKS = [
-  { href: "/", label: "MATCHES" },
-  { href: "/my-tickets", label: "MY TICKETS" },
+  { href: "/",           label: "MATCHES",      color: undefined   },
+  { href: "/my-tickets", label: "MY TICKETS",   color: undefined   },
+  { href: "/rewards",    label: "REWARDS",      color: "#F5A623"   },
 ];
 
-const BASE_LINKS_LAST = [
-  { href: "/pindi-special", label: "PINDI SPECIAL - Coming Soon" },
-]
-
-/* ── Navbar ─────────────────────────────────────────────────── */
 export function Navbar() {
   const pathname = usePathname();
   const { isOwner, isMod, isLoading } = useRole();
 
   const roleLinks = isLoading ? [] : isOwner
     ? [
-      { href: "/mods", label: "VERIFY", color: "#00C9FF" },
-      { href: "/admin", label: "ADMIN PORTAL", color: "#F5A623" },
-    ]
+        { href: "/mods",  label: "VERIFY",       color: "#00C9FF" },
+        { href: "/admin", label: "ADMIN PORTAL",  color: "#F5A623" },
+      ]
     : isMod
       ? [{ href: "/mods", label: "VERIFY", color: "#00C9FF" }]
       : [];
 
-  const allLinks = [...BASE_LINKS, ...roleLinks, ...BASE_LINKS_LAST];
+  const allLinks = [...BASE_LINKS, ...roleLinks];
 
   return (
     <nav
@@ -126,58 +106,35 @@ export function Navbar() {
         WebkitBackdropFilter: "blur(20px)",
       }}
     >
-      {/* ── Logo / Brand ──────────────────────────────────────── */}
+      {/* Logo */}
       <Link href="/" className="flex items-center gap-3 mr-10 select-none">
-        {/* Hexagon mark */}
         <svg width="28" height="28" viewBox="0 0 28 28" fill="none" className="shrink-0">
-          <polygon
-            points="14,2 24.4,8 24.4,20 14,26 3.6,20 3.6,8"
-            fill="none"
-            stroke="url(#wujood-grad)"
-            strokeWidth="1.5"
-          />
-          <polygon
-            points="14,7 20,10.5 20,17.5 14,21 8,17.5 8,10.5"
-            fill="url(#wujood-grad)"
-            fillOpacity="0.20"
-          />
-          <circle cx="14" cy="14" r="3" fill="url(#wujood-grad)" />
+          <polygon points="14,2 24.4,8 24.4,20 14,26 3.6,20 3.6,8" fill="none" stroke="url(#wg)" strokeWidth="1.5" />
+          <polygon points="14,7 20,10.5 20,17.5 14,21 8,17.5 8,10.5" fill="url(#wg)" fillOpacity="0.20" />
+          <circle cx="14" cy="14" r="3" fill="url(#wg)" />
           <defs>
-            <linearGradient id="wujood-grad" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#7C5CFC" />
-              <stop offset="1" stopColor="#00C9FF" />
+            <linearGradient id="wg" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#7C5CFC" /><stop offset="1" stopColor="#00C9FF" />
             </linearGradient>
           </defs>
         </svg>
-
         <div className="flex flex-col leading-none">
-          <span
-            className="font-display font-extrabold tracking-widest text-sm"
-            style={{
-              background: "linear-gradient(90deg, #A78BFA, #7C5CFC)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              letterSpacing: "0.18em",
-            }}
-          >
+          <span className="font-display font-extrabold tracking-widest text-sm"
+            style={{ background: "linear-gradient(90deg, #A78BFA, #7C5CFC)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", letterSpacing: "0.18em" }}>
             WUJOOD
           </span>
-          <span className="font-mono text-[9px] tracking-[0.22em]" style={{ color: "var(--muted)" }}>
-            PSL · WIREFLUID
-          </span>
+          <span className="font-mono text-[9px] tracking-[0.22em]" style={{ color: "var(--muted)" }}>PSL · WIREFLUID</span>
         </div>
       </Link>
 
-      {/* ── Links ─────────────────────────────────────────────── */}
+      {/* Links */}
       <div className="hidden md:flex items-center gap-1 flex-1">
-        {allLinks.map(({ href, label, color }: { href: string; label: string; color?: string }) => {
+        {allLinks.map(({ href, label, color }) => {
           const active = pathname === href || (href !== "/" && pathname.startsWith(href));
           const c = color ?? "#7C5CFC";
           return (
-            <Link
-              key={href}
-              href={href}
-              className="px-4 py-2 font-condensed text-xs tracking-widest rounded-md transition-all"
+            <Link key={href} href={href}
+              className="flex items-center gap-1.5 px-4 py-2 font-condensed text-xs tracking-widest rounded-md transition-all"
               style={{
                 color: active ? c : "var(--muted)",
                 background: active ? c + "12" : "transparent",
@@ -190,17 +147,20 @@ export function Navbar() {
               onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.color = "var(--muted)"; }}
             >
               {label}
+              {/* Pulsing dot on REWARDS to draw attention */}
+              {label === "REWARDS" && !active && (
+                <span className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ background: "#F5A623", boxShadow: "0 0 5px #F5A623", animation: "pulseGlow 2s infinite" }} />
+              )}
             </Link>
           );
         })}
       </div>
 
-      {/* ── Wallet ────────────────────────────────────────────── */}
+      {/* Wallet */}
       <div className="ml-auto">
         <ConnectButton.Custom>
-          {({ openConnectModal, mounted }) =>
-            mounted ? <WalletButton openConnectModal={openConnectModal} /> : null
-          }
+          {({ openConnectModal, mounted }) => mounted ? <WalletButton openConnectModal={openConnectModal} /> : null}
         </ConnectButton.Custom>
       </div>
     </nav>

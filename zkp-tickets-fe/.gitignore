@@ -25,6 +25,7 @@ pnpm-debug.log*
 
 # testing
 /coverage
+**/broadcast/**
 
 # caching
 /.cache

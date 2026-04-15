@@ -840,6 +840,17 @@ function ZKDonePanel({ matchAddr, matchName, seat, commitment, onReset }: {
         <strong style={{ color: "white" }}>Save a screenshot.</strong>
       </p>
 
+      {/* ── Critical warning ── */}
+      <div className="rounded-lg px-4 py-3 mb-4 text-left"
+        style={{ background: "rgba(255,71,87,0.08)", border: "1px solid rgba(255,71,87,0.45)" }}>
+        <p className="font-condensed font-bold text-xs tracking-widest mb-1" style={{ color: "#FF4757" }}>
+          ⚠ IMPORTANT — DO NOT LOSE THIS QR CODE
+        </p>
+        <p className="font-body text-xs leading-relaxed" style={{ color: "#FF4757CC" }}>
+          This QR code will <strong style={{ color: "#FF4757" }}>not be shown again</strong>. Once you leave this page it cannot be recovered. Save a screenshot or download it now before proceeding.
+        </p>
+      </div>
+
       <div className="flex gap-2">
         <button onClick={handleDownload} className="btn-outline flex-1 justify-center text-xs">
           SAVE QR

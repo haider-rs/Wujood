@@ -114,6 +114,7 @@ function CreateMatchPanel() {
             className="input-field"
             value={form.dateIso}
             onChange={e => set("dateIso")(e.target.value)}
+            min={(() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split("T")[0]; })()}
             style={{ colorScheme: "dark" }}
           />
           {form.dateIso && (

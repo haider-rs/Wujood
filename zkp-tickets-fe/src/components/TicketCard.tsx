@@ -38,6 +38,12 @@ export function TicketCard({ ticket, matchAddr, matchName, venue, dateString }: 
   const [qrValue, setQrValue] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const qrRef = useRef<HTMLDivElement>(null);
+  const [notice, setNotice] = useState(false);
+
+  function showNotice() {
+    setNotice(true);
+    setTimeout(() => setNotice(false), 7000);
+  }
 
   const ticketIdStr = ticket.id.toString();
   const seatColor = getSeatColor(ticket.seat);
@@ -136,7 +142,65 @@ export function TicketCard({ ticket, matchAddr, matchName, venue, dateString }: 
   }
 
   return (
-    <div
+    <>
+      {/* ── Coming Soon toast ── */}
+      {notice && (
+        <div
+          className="fixed top-5 right-5 z-50 w-80 rounded-xl shadow-2xl"
+          style={{
+            background: "rgba(9,14,28,0.97)",
+            border: "1px solid rgba(124,92,252,0.45)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            animation: "slideInRight 0.22s ease both",
+          }}
+        >
+          {/* Progress bar */}
+          <div className="h-[2px] w-full rounded-t-xl overflow-hidden">
+            <div
+              style={{
+                height: "100%",
+                background: "linear-gradient(90deg, #7C5CFC, #22D3EE)",
+                animation: "shrinkBar 7s linear forwards",
+              }}
+            />
+          </div>
+          <div className="p-4 flex items-start gap-3">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: "rgba(124,92,252,0.15)", border: "1px solid #7C5CFC44" }}
+            >
+              <span style={{ fontSize: 15 }}>🔐</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-condensed font-bold text-xs tracking-widest mb-1" style={{ color: "#A78BFA" }}>
+                COMING SOON
+              </p>
+              <p className="font-body text-xs leading-relaxed" style={{ color: "var(--text)" }}>
+                ZKP QR codes are{" "}
+                <span style={{ color: "#fff", fontWeight: 600 }}>one-time only</span>{" "}
+                — displayed at the moment of purchase and not stored.
+              </p>
+            </div>
+            <button
+              onClick={() => setNotice(false)}
+              className="shrink-0 font-mono text-xs leading-none hover:opacity-100 transition-opacity"
+              style={{ color: "var(--muted)", opacity: 0.6, marginTop: 1 }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes shrinkBar {
+          from { width: 100%; }
+          to   { width: 0%; }
+        }
+      `}</style>
+
+      <div
       className={`relative card-glass rounded-xl overflow-hidden transition-all duration-300 ${ticket.used ? "opacity-45 grayscale" : "hover:-translate-y-0.5"
         }`}
       style={{ borderColor: ticket.used ? "var(--border)" : seatColor + "30" }}
@@ -192,7 +256,7 @@ export function TicketCard({ ticket, matchAddr, matchName, venue, dateString }: 
               <div className="mb-2 flex flex-col gap-2">
 
                 {proveStep === "idle" && qrStep !== "ready" && (
-                  <button onClick={() => alert("Coming Soon!\n\nFor MVP ZKP QR codes are one time show only, That is during buying the ticket.")}
+                  <button onClick={showNotice}
                     className="btn-outline w-full justify-center text-xs mb-2">
                     SHOW ZK ENTRY QR
                   </button>
@@ -303,5 +367,6 @@ export function TicketCard({ ticket, matchAddr, matchName, venue, dateString }: 
         </div>
       )}
     </div>
+    </>
   );
 }

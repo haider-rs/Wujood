@@ -5,6 +5,8 @@ import { TICKET_FACTORY_ABI } from "@/config/abis";
 import { FACTORY_ADDRESS } from "@/config/wagmi";
 import { MatchCard } from "@/components/MatchCard";
 
+const ROTATING_WORDS = ["Seconds.", "Seconds.", "Seconds."];
+
 export default function HomePage() {
   const { data: addresses, isLoading, error } = useReadContract({
     address: FACTORY_ADDRESS,
@@ -39,8 +41,11 @@ export default function HomePage() {
           </span>
         </div>
 
-        {/* Headline */}
-        <h1 className="font-display font-black text-4xl sm:text-6xl tracking-tight text-white mb-4 leading-none">
+        {/* Headline — fixed stretch */}
+        <h1
+          className="font-condensed font-black tracking-wider text-white mb-4 leading-tight"
+          style={{ fontSize: "clamp(2.4rem, 7vw, 5rem)" }}
+        >
           PRIVACY-PRESERVING
           <br />
           <span
@@ -59,15 +64,19 @@ export default function HomePage() {
           Buy event tickets with on-chain ownership and verify your identity at the gate — without ever revealing who you are.
         </p>
 
-        {/* Stats row */}
+        {/* Stats row — with staggered fade-in */}
         <div className="flex items-center justify-center gap-8 mt-8 flex-wrap">
           {[
             { label: "PRIVACY", value: "On-Chain" },
             { label: "CHAIN", value: "WireFluid" },
             { label: "ZKP PROTOCOL", value: "Groth16" },
             { label: "IDENTITY", value: "NEVER On-Chain" },
-          ].map(({ label, value }) => (
-            <div key={value} className="flex flex-col items-center gap-1">
+          ].map(({ label, value }, i) => (
+            <div
+              key={value}
+              className="flex flex-col items-center gap-1"
+              style={{ animation: `heroFadeUp 0.5s ease ${i * 0.08}s both` }}
+            >
               <span className="font-display font-bold text-lg text-white">{label}</span>
               <span className="font-mono text-xs tracking-widest" style={{ color: "var(--muted)" }}>
                 {value}
@@ -80,7 +89,6 @@ export default function HomePage() {
       {/* ── Active matches header ─────────────────────────────── */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          {/* Violet marker bar */}
           <div
             className="w-1 h-6 rounded-full"
             style={{ background: "linear-gradient(180deg, #7C5CFC, #22D3EE)" }}
@@ -187,13 +195,15 @@ export default function HomePage() {
               color: "#F5A623",
               desc: "The venue scanner verifies the proof on-chain. Your nullifier is consumed — no re-entry, no identity exposed.",
             },
-          ].map(({ step, title, color, desc }) => (
+          ].map(({ step, title, color, desc }, i) => (
             <div
               key={step}
               className="relative overflow-hidden p-6"
-              style={{ background: "var(--surface)" }}
+              style={{
+                background: "var(--surface)",
+                animation: `heroFadeUp 0.5s ease ${0.2 + i * 0.1}s both`,
+              }}
             >
-              {/* Big step number watermark */}
               <div
                 className="font-display font-black text-7xl leading-none absolute -top-2 -right-2 select-none pointer-events-none"
                 style={{ color, opacity: 0.05 }}
@@ -220,6 +230,14 @@ export default function HomePage() {
           ))}
         </div>
       </div>
+
+      {/* ── Keyframe injection ──────────────────────────────── */}
+      <style>{`
+        @keyframes heroFadeUp {
+          from { opacity: 0; transform: translateY(12px); }
+          to   { opacity: 1; transform: none; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -235,9 +253,7 @@ function MatchInfoLoader({ address, index }: { address: `0x${string}`; index: nu
 
   if (isLoading) {
     return (
-      <div
-        className="card-glass rounded-xl p-5 h-64 flex items-center justify-center animate-shimmer"
-      >
+      <div className="card-glass rounded-xl p-5 h-64 flex items-center justify-center animate-shimmer">
         <div className="spinner" />
       </div>
     );
