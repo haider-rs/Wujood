@@ -4,109 +4,117 @@ pragma solidity ^0.8.24;
 interface IMatchTickets {
     function ticketsSold() external view returns (uint256);
     function tickets(uint256 id) external view returns (
-        uint256, address, string memory, bytes32, uint8, string memory, bool
+        uint256 id_,
+        address buyer,
+        string memory holderName,
+        bytes32 cnicHash,
+        uint8 category,
+        string memory seat,
+        bool used
     );
 }
 
+/**
+ * @title RewardsPool
+ * @notice Seasonal rewards draw.
+ *         Pool = one entry per ticket (weighted). Same person can win multiple slots.
+ *         admin   = deployer wallet
+ *         factory = TicketFactory (only it can call addMatch)
+ */
 contract RewardsPool {
-    address public admin;       // wallet owner — can drawWinners
-    address public factory;     // TicketFactory — can addMatch
+    address public admin;
+    address public factory;
+
     address[] public registeredMatches;
     address[3] public winners;
     bool public drawn;
 
-    event MatchRegistered(address indexed matchContract);
     event WinnersDrawn(address[3] winners);
+    event MatchRegistered(address indexed matchContract);
 
-    modifier onlyAdmin() {
-        require(msg.sender == admin, "Not admin");
-        _;
-    }
+    modifier onlyAdmin()   { require(msg.sender == admin,   "Not admin");   _; }
+    modifier onlyFactory() { require(msg.sender == factory, "Not factory"); _; }
 
-    modifier onlyFactory() {
-        require(msg.sender == factory, "Not factory");
-        _;
-    }
-
-    /// @param _admin  The wallet owner (draws winners, reads data)
-    /// @param _factory The TicketFactory contract (auto-registers matches)
     constructor(address _admin, address _factory) {
-        require(_admin != address(0) && _factory != address(0), "Zero address");
-        admin = _admin;
+        admin   = _admin;
         factory = _factory;
     }
 
-    /// @notice Called automatically by TicketFactory.createMatch()
+    // ── Match registration ─────────────────────────────────────────────────
+
     function addMatch(address matchAddr) external onlyFactory {
         registeredMatches.push(matchAddr);
         emit MatchRegistered(matchAddr);
     }
 
-    /// @notice Get all unique buyer addresses across all registered matches
+    function getRegisteredMatches() external view returns (address[] memory) {
+        return registeredMatches;
+    }
+
+    // ── Pool: one entry per ticket sold (weighted by ticket count) ──────────
+
+    function getPool() public view returns (address[] memory) {
+        uint256 totalSold;
+        for (uint256 i = 0; i < registeredMatches.length; i++) {
+            totalSold += IMatchTickets(registeredMatches[i]).ticketsSold();
+        }
+        if (totalSold == 0) return new address[](0);
+
+        address[] memory pool = new address[](totalSold);
+        uint256 idx;
+        for (uint256 i = 0; i < registeredMatches.length; i++) {
+            IMatchTickets m = IMatchTickets(registeredMatches[i]);
+            uint256 sold = m.ticketsSold();
+            for (uint256 j = 0; j < sold; j++) {
+                (, address buyer,,,,,) = m.tickets(j);
+                pool[idx++] = buyer;
+            }
+        }
+        return pool;
+    }
+
+    // ── Unique buyers list (for frontend display only) ──────────────────────
+
     function getAllBuyers() public view returns (address[] memory) {
-        uint256 total = 0;
-        for (uint256 m = 0; m < registeredMatches.length; m++) {
-            total += IMatchTickets(registeredMatches[m]).ticketsSold();
-        }
+        address[] memory pool = getPool();
+        if (pool.length == 0) return new address[](0);
 
-        address[] memory allBuyers = new address[](total);
-        uint256 idx = 0;
-        for (uint256 m = 0; m < registeredMatches.length; m++) {
-            IMatchTickets mt = IMatchTickets(registeredMatches[m]);
-            uint256 sold = mt.ticketsSold();
-            for (uint256 t = 0; t < sold; t++) {
-                (, address buyer,,,,,) = mt.tickets(t);
-                allBuyers[idx++] = buyer;
+        address[] memory temp = new address[](pool.length);
+        uint256 unique;
+        for (uint256 i = 0; i < pool.length; i++) {
+            bool found = false;
+            for (uint256 k = 0; k < unique; k++) {
+                if (temp[k] == pool[i]) { found = true; break; }
             }
+            if (!found) temp[unique++] = pool[i];
         }
-
-        // Deduplicate
-        address[] memory unique = new address[](total);
-        uint256 uniqueCount = 0;
-        for (uint256 i = 0; i < total; i++) {
-            bool dup = false;
-            for (uint256 j = 0; j < uniqueCount; j++) {
-                if (unique[j] == allBuyers[i]) { dup = true; break; }
-            }
-            if (!dup) {
-                unique[uniqueCount++] = allBuyers[i];
-            }
-        }
-
-        address[] memory result = new address[](uniqueCount);
-        for (uint256 i = 0; i < uniqueCount; i++) {
-            result[i] = unique[i];
-        }
+        address[] memory result = new address[](unique);
+        for (uint256 i = 0; i < unique; i++) result[i] = temp[i];
         return result;
     }
 
-    /// @notice Draw 3 random winners — called by admin from /admin portal
+    // ── Draw: 3 picks from ticket pool, same person can win multiple slots ──
+
     function drawWinners(uint256 seed) external onlyAdmin {
         require(!drawn, "Already drawn");
 
-        address[] memory buyers = getAllBuyers();
-        require(buyers.length >= 3, "Need at least 3 unique buyers");
+        address[] memory pool = getPool();
+        require(pool.length >= 3, "Need at least 3 tickets sold");
 
-        address[3] memory selected;
-        uint256 poolSize = buyers.length;
+        uint256 rand = uint256(keccak256(abi.encodePacked(
+            seed, block.prevrandao, block.timestamp, block.number
+        )));
 
         for (uint256 i = 0; i < 3; i++) {
-            uint256 rand = uint256(keccak256(abi.encodePacked(seed, blockhash(block.number - 1), i))) % poolSize;
-            selected[i] = buyers[rand];
-            buyers[rand] = buyers[poolSize - 1];
-            poolSize--;
+            uint256 idx = uint256(keccak256(abi.encodePacked(rand, i))) % pool.length;
+            winners[i] = pool[idx];
         }
 
-        winners = selected;
         drawn = true;
-        emit WinnersDrawn(selected);
+        emit WinnersDrawn(winners);
     }
 
     function getWinners() external view returns (address[3] memory) {
         return winners;
-    }
-
-    function getRegisteredMatches() external view returns (address[] memory) {
-        return registeredMatches;
     }
 }

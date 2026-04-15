@@ -260,8 +260,10 @@ contract MatchTicketsTest is Test {
     function _toStr(uint256 n) internal pure returns (string memory) {
         if (n == 0) return "0";
         bytes memory b;
-        while (n > 0) b = abi.encodePacked(uint8(48 + n % 10), b);
-        n /= 10;
+        while (n > 0) {
+            b = abi.encodePacked(uint8(48 + n % 10), b);
+            n /= 10;
+        }
         return string(b);
     }
 

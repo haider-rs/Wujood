@@ -24,6 +24,7 @@ contract DeployAll is Script {
         console.log("");
         console.log(".env.local:");
         console.log("  NEXT_PUBLIC_FACTORY_ADDRESS=", address(factory));
-        console.log("  NEXT_PUBLIC_REWARDS_ADDRESS=", address(factory.rewardsPool()));
+        console.log("  NEXT_PUBLIC_REWARDS_POOL=", address(factory.rewardsPool()));
+        console.log("  NEXT_PUBLIC_ZK_VERIFIER=", address(verifier));
     }
 }

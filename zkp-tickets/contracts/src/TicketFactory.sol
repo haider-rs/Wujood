@@ -18,15 +18,23 @@ contract TicketFactory {
     }
 
     address public owner;
-    address public zkVerifier;          // Groth16Verifier — shared by all matches
-    RewardsPool public rewardsPool;     // Deployed in constructor — auto-registered
+    address public zkVerifier; // Groth16Verifier — shared by all matches
+    RewardsPool public rewardsPool; // Deployed in constructor — auto-registered
     address[] public matchAddresses;
     mapping(address => MatchInfo) public matchInfo;
 
     mapping(address => bool) public mods;
     address[] private modList;
 
-    event MatchCreated(address indexed matchContract, string name, string venue, uint256 generalPrice, uint256 enclosurePrice, uint256 vipPrice, uint256 totalTickets);
+    event MatchCreated(
+        address indexed matchContract,
+        string name,
+        string venue,
+        uint256 generalPrice,
+        uint256 enclosurePrice,
+        uint256 vipPrice,
+        uint256 totalTickets
+    );
     event MatchToggled(address indexed matchContract, bool active);
     event ModAdded(address indexed mod);
     event ModRemoved(address indexed mod);
@@ -90,7 +98,7 @@ contract TicketFactory {
         MatchTickets mt = new MatchTickets(
             owner,
             address(this),
-            zkVerifier,         // ZK verifier auto-wired
+            zkVerifier, // ZK verifier auto-wired
             _name,
             _venue,
             _dateString,
@@ -107,15 +115,15 @@ contract TicketFactory {
 
         matchAddresses.push(addr);
         matchInfo[addr] = MatchInfo({
-            name:           _name,
-            venue:          _venue,
-            dateString:     _dateString,
-            totalTickets:   _totalTickets,
-            generalPrice:   _generalPrice,
+            name: _name,
+            venue: _venue,
+            dateString: _dateString,
+            totalTickets: _totalTickets,
+            generalPrice: _generalPrice,
             enclosurePrice: _enclosurePrice,
-            vipPrice:       _vipPrice,
-            contractAddr:   addr,
-            active:         true
+            vipPrice: _vipPrice,
+            contractAddr: addr,
+            active: true
         });
 
         emit MatchCreated(addr, _name, _venue, _generalPrice, _enclosurePrice, _vipPrice, _totalTickets);

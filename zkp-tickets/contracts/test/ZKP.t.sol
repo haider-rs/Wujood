@@ -296,16 +296,17 @@ contract RewardsPoolTest is Test {
         rewards.drawWinners(42);
     }
 
-    function test_drawWinners_needsMinBuyers() public {
+    function test_drawWinners_needsMinTickets() public {
         MockVerifier v2 = new MockVerifier();
         TicketFactory f2 = new TicketFactory(address(v2));
         RewardsPool rp2 = f2.rewardsPool();
         address m = f2.createMatch("M3", "V", "D", 50, 0.001 ether, 0.005 ether, 0.01 ether);
 
+        // Only 2 tickets sold — need at least 3
         _buy(m, fan1, "X", "GEN-B-1");
         _buy(m, fan2, "Y", "GEN-B-2");
 
-        vm.expectRevert("Need at least 3 unique buyers");
+        vm.expectRevert("Need at least 3 tickets sold");
         rp2.drawWinners(1);
     }
 
