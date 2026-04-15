@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useAccount, useReadContract, useWriteContract, usePublicClient } from "wagmi";
+import { keccak256, encodeAbiParameters, parseAbiParameters } from "viem";
 import { REWARDS_POOL_ABI } from "@/config/abis";
 import { TICKET_FACTORY_ABI, MATCH_TICKETS_ABI } from "@/config/abis";
 import { FACTORY_ADDRESS } from "@/config/wagmi";
@@ -14,6 +15,8 @@ import { showToast } from "@/components/Toast";
 function shortAddr(addr: string) {
   return addr.slice(0, 6) + "…" + addr.slice(-4);
 }
+
+const ZERO_HASH = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
 // ── Confetti ──────────────────────────────────────────────────────────────────
 
@@ -44,6 +47,28 @@ function Confetti() {
           100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
         }
       `}</style>
+    </div>
+  );
+}
+
+// ── Step indicator ────────────────────────────────────────────────────────────
+
+function StepBadge({ n, label, active, done }: { n: number; label: string; active: boolean; done: boolean }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div style={{
+        width: 24, height: 24, borderRadius: "50%", display: "flex",
+        alignItems: "center", justifyContent: "center", fontSize: 11,
+        fontFamily: "monospace", fontWeight: 700, flexShrink: 0,
+        background: done ? "#00E87A" : active ? "#F5A623" : "rgba(255,255,255,0.08)",
+        color: done || active ? "#000" : "var(--muted)",
+      }}>
+        {done ? "✓" : n}
+      </div>
+      <span className="font-condensed text-xs tracking-widest"
+        style={{ color: done ? "#00E87A" : active ? "#F5A623" : "var(--muted)" }}>
+        {label}
+      </span>
     </div>
   );
 }
@@ -82,15 +107,60 @@ export default function RewardsPage() {
     address: FACTORY_ADDRESS, abi: TICKET_FACTORY_ABI, functionName: "getAllMatches",
   });
 
+  // ── Commit-reveal state reads ─────────────────────────────────────────────
+
+  const { data: pendingCommit, refetch: refetchCommit } = useReadContract({
+    address: REWARDS_ADDR, abi: REWARDS_POOL_ABI, functionName: "pendingCommit",
+  });
+
+  const { data: commitBlock } = useReadContract({
+    address: REWARDS_ADDR, abi: REWARDS_POOL_ABI, functionName: "commitBlock",
+  });
+
+  const { data: snapshotTaken, refetch: refetchSnapshotTaken } = useReadContract({
+    address: REWARDS_ADDR, abi: REWARDS_POOL_ABI, functionName: "snapshotTaken",
+  });
+
   // ── Local state ───────────────────────────────────────────────────────────
 
   const [leaderboard, setLeaderboard] = useState<BuyerEntry[]>([]);
   const [loadingBoard, setLoadingBoard] = useState(false);
-  const [seed, setSeed] = useState("");
+  const [seed, setSeed] = useState<string>("");
   const [txBusy, setTxBusy] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [currentBlock, setCurrentBlock] = useState<bigint>(0n);
 
-  // ── Build leaderboard (callable manually) ────────────────────────────────
+  // ── Track current block number ────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!publicClient) return;
+    let cancelled = false;
+
+    async function poll() {
+      if (cancelled) return;
+      const n = await publicClient!.getBlockNumber();
+      if (!cancelled) setCurrentBlock(n);
+      setTimeout(poll, 6000); // ~1 block on most EVM chains
+    }
+    poll();
+    return () => { cancelled = true; };
+  }, [publicClient]);
+
+  // ── Derived commit-reveal state ───────────────────────────────────────────
+
+  const hasCommit = !!(pendingCommit && pendingCommit !== ZERO_HASH);
+  const blocksRemaining = hasCommit && commitBlock
+    ? Math.max(0, Number((commitBlock as bigint) + 5n - currentBlock))
+    : 0;
+  const delayPassed = hasCommit && blocksRemaining === 0;
+
+  // Which step are we on?
+  // step 1 = no commit yet
+  // step 2 = committed, not snapshotted
+  // step 3 = snapshotted, not drawn
+  const drawStep = !hasCommit ? 1 : !snapshotTaken ? 2 : 3;
+
+  // ── Build leaderboard ─────────────────────────────────────────────────────
 
   async function loadLeaderboard(buyers: string[], matches: string[]) {
     if (!buyers.length || !matches.length || !publicClient) return;
@@ -135,10 +205,47 @@ export default function RewardsPage() {
     if (buyers && matches) loadLeaderboard(buyers, matches);
   }, [allBuyers, allMatches]);
 
-  // ── Draw ──────────────────────────────────────────────────────────────────
+  // ── Step 1: Commit ────────────────────────────────────────────────────────
+
+  async function handleCommit() {
+    if (!seed.trim()) return showToast("Enter a secret seed first", "error");
+    const secret = BigInt(seed.trim());
+    // Hash must match what the contract checks: keccak256(abi.encode(seed))
+    const hash = keccak256(encodeAbiParameters(parseAbiParameters("uint256"), [secret]));
+    setTxBusy(true);
+    try {
+      await writeContractAsync({
+        address: REWARDS_ADDR, abi: REWARDS_POOL_ABI,
+        functionName: "commitDraw", args: [hash],
+      });
+      showToast("✅ Committed! Wait 5 blocks, then take snapshot.", "success");
+      await refetchCommit();
+    } catch (e: any) {
+      showToast(e?.shortMessage ?? "Commit failed", "error");
+    } finally { setTxBusy(false); }
+  }
+
+  // ── Step 2: Snapshot ──────────────────────────────────────────────────────
+
+  async function handleSnapshot() {
+    setTxBusy(true);
+    try {
+      await writeContractAsync({
+        address: REWARDS_ADDR, abi: REWARDS_POOL_ABI,
+        functionName: "takeSnapshot", args: [],
+      });
+      showToast("📸 Snapshot taken! Now draw winners.", "success");
+      await refetchSnapshotTaken();
+    } catch (e: any) {
+      showToast(e?.shortMessage ?? "Snapshot failed", "error");
+    } finally { setTxBusy(false); }
+  }
+
+  // ── Step 3: Draw ──────────────────────────────────────────────────────────
 
   async function handleDraw() {
-    const parsedSeed = seed.trim() ? BigInt(seed.trim()) : BigInt(Date.now());
+    if (!seed.trim()) return showToast("Enter the same secret seed you committed", "error");
+    const parsedSeed = BigInt(seed.trim());
     setTxBusy(true);
     try {
       await writeContractAsync({
@@ -148,9 +255,10 @@ export default function RewardsPage() {
       showToast("🎉 Winners drawn!", "success");
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 6000);
-      refetchDrawn(); refetchWinners();
+      // Await both refetches so winners render immediately
+      await Promise.all([refetchDrawn(), refetchWinners()]);
     } catch (e: any) {
-      showToast(e?.shortMessage ?? "Failed", "error");
+      showToast(e?.shortMessage ?? "Draw failed", "error");
     } finally { setTxBusy(false); }
   }
 
@@ -235,39 +343,101 @@ export default function RewardsPage() {
       {isOwner && !drawn && (
         <div className="mb-10 p-5 rounded-xl"
           style={{ background: "rgba(245,166,35,0.04)", border: "1px solid rgba(245,166,35,0.20)" }}>
-          <div className="font-condensed text-xs tracking-widest mb-4" style={{ color: "#F5A623" }}>
-            ADMIN — DRAW WINNERS
+
+          {/* Header + step progress */}
+          <div className="flex items-center justify-between mb-5">
+            <div className="font-condensed text-xs tracking-widest" style={{ color: "#F5A623" }}>
+              ADMIN — DRAW WINNERS
+            </div>
+            <div className="flex items-center gap-4">
+              <StepBadge n={1} label="COMMIT"   active={drawStep === 1} done={drawStep > 1} />
+              <div style={{ width: 16, height: 1, background: "rgba(255,255,255,0.12)" }} />
+              <StepBadge n={2} label="SNAPSHOT" active={drawStep === 2} done={drawStep > 2} />
+              <div style={{ width: 16, height: 1, background: "rgba(255,255,255,0.12)" }} />
+              <StepBadge n={3} label="DRAW"     active={drawStep === 3} done={!!drawn} />
+            </div>
           </div>
 
-          <>
-              <p className="font-body text-sm mb-4" style={{ color: "var(--muted)" }}>
-                <strong style={{ color: "#fff" }}>{uniqueCount} unique buyers</strong> across{" "}
-                <strong style={{ color: "#fff" }}>{matchCount} matches</strong>. Ready to draw.
-              </p>
+          <p className="font-body text-sm mb-5" style={{ color: "var(--muted)" }}>
+            <strong style={{ color: "#fff" }}>{uniqueCount} unique buyers</strong> across{" "}
+            <strong style={{ color: "#fff" }}>{matchCount} matches</strong>.
+          </p>
 
-              <div className="flex gap-3 items-end">
-                <div className="flex-1">
-                  <label className="font-mono text-[10px] mb-1 block" style={{ color: "var(--muted)" }}>
-                    SEED (optional — leave blank to use timestamp)
-                  </label>
-                  <input
-                    className="input-field text-xs font-mono"
-                    placeholder="e.g. 42"
-                    value={seed}
-                    onChange={e => setSeed(e.target.value)}
-                  />
-                </div>
-                <button className="btn-primary shrink-0" onClick={handleDraw} disabled={txBusy}>
-                  {txBusy
-                    ? <><div className="spinner" style={{ width: 14, height: 14 }} /> DRAWING…</>
-                    : "🎲 DRAW WINNERS"}
-                </button>
-              </div>
+          {/* Seed input — shown on step 1 and step 3 */}
+          {(drawStep === 1 || drawStep === 3) && (
+            <div className="mb-4">
+              <label className="font-mono text-[10px] mb-1 block" style={{ color: "var(--muted)" }}>
+                {drawStep === 1
+                  ? "SECRET SEED — remember this, you'll need it again for step 3"
+                  : "SECRET SEED — must be the same number you committed in step 1"}
+              </label>
+              <input
+                className="input-field text-xs font-mono w-full"
+                type="number"
+                min="0"
+                step="1"
+                placeholder="e.g. 42069"
+                value={seed}
+                onChange={e => setSeed(e.target.value.replace(/[^0-9]/g, ""))}
+                onKeyDown={e => ["e","E","+","-","."].includes(e.key) && e.preventDefault()}
+              />
+            </div>
+          )}
 
+          {/* Step 1: Commit */}
+          {drawStep === 1 && (
+            <>
+              <button className="btn-primary w-full" onClick={handleCommit} disabled={txBusy || !seed.trim()}>
+                {txBusy
+                  ? <><div className="spinner" style={{ width: 14, height: 14 }} /> COMMITTING…</>
+                  : "🔒 STEP 1 — COMMIT SECRET"}
+              </button>
               <p className="font-mono text-[10px] mt-3" style={{ color: "var(--muted)" }}>
-                Randomness mixed with prevrandao + block data on-chain. One-time only — cannot be redrawn.
+                Hashes your seed on-chain. After this, wait 5 blocks before taking a snapshot.
               </p>
             </>
+          )}
+
+          {/* Step 2: Snapshot */}
+          {drawStep === 2 && (
+            <>
+              {!delayPassed && (
+                <div className="mb-3 px-3 py-2 rounded-lg flex items-center gap-2"
+                  style={{ background: "rgba(245,166,35,0.08)", border: "1px solid rgba(245,166,35,0.20)" }}>
+                  <span>⏳</span>
+                  <span className="font-mono text-xs" style={{ color: "#F5A623" }}>
+                    Waiting for commit delay — {blocksRemaining} block{blocksRemaining !== 1 ? "s" : ""} remaining
+                  </span>
+                </div>
+              )}
+              <button
+                className="btn-primary w-full"
+                onClick={handleSnapshot}
+                disabled={txBusy || !delayPassed}
+              >
+                {txBusy
+                  ? <><div className="spinner" style={{ width: 14, height: 14 }} /> SNAPSHOTTING…</>
+                  : "📸 STEP 2 — TAKE SNAPSHOT"}
+              </button>
+              <p className="font-mono text-[10px] mt-3" style={{ color: "var(--muted)" }}>
+                Freezes the current ticket pool into contract storage so the draw uses no external calls.
+              </p>
+            </>
+          )}
+
+          {/* Step 3: Draw */}
+          {drawStep === 3 && (
+            <>
+              <button className="btn-primary w-full" onClick={handleDraw} disabled={txBusy || !seed.trim()}>
+                {txBusy
+                  ? <><div className="spinner" style={{ width: 14, height: 14 }} /> DRAWING…</>
+                  : "🎲 STEP 3 — DRAW WINNERS"}
+              </button>
+              <p className="font-mono text-[10px] mt-3" style={{ color: "var(--muted)" }}>
+                Reveals your secret on-chain. Mixed with prevrandao + block data. One-time only — cannot be redrawn.
+              </p>
+            </>
+          )}
         </div>
       )}
 

@@ -457,7 +457,7 @@ export const MATCH_TICKETS_ABI = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const REWARDS_POOL_ABI = [
-  // ── Views ─────────────────────────────────────────────────────────────────
+  // ── Public state (view) ───────────────────────────────────────────────────
   {
     inputs: [],
     name: "admin",
@@ -479,6 +479,36 @@ export const REWARDS_POOL_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  // ── Commit-reveal state ───────────────────────────────────────────────────
+  {
+    inputs: [],
+    name: "pendingCommit",
+    outputs: [{ name: "", type: "bytes32" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "commitBlock",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "snapshotTaken",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "COMMIT_DELAY",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  // ── Views ─────────────────────────────────────────────────────────────────
   {
     inputs: [],
     name: "getWinners",
@@ -500,7 +530,35 @@ export const REWARDS_POOL_ABI = [
     stateMutability: "view",
     type: "function",
   },
-  // ── Admin ─────────────────────────────────────────────────────────────────
+  {
+    inputs: [],
+    name: "getSnapshotSize",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getPool",
+    outputs: [{ name: "", type: "address[]" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  // ── Admin — 3-step draw ───────────────────────────────────────────────────
+  {
+    inputs: [{ name: "_hash", type: "bytes32" }],
+    name: "commitDraw",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "takeSnapshot",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
   {
     inputs: [{ name: "seed", type: "uint256" }],
     name: "drawWinners",
@@ -527,6 +585,21 @@ export const REWARDS_POOL_ABI = [
     anonymous: false,
     inputs: [{ indexed: true, name: "matchContract", type: "address" }],
     name: "MatchRegistered",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true,  name: "commitHash", type: "bytes32" },
+      { indexed: false, name: "atBlock",    type: "uint256" },
+    ],
+    name: "DrawCommitted",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [{ indexed: false, name: "poolSize", type: "uint256" }],
+    name: "SnapshotTaken",
     type: "event",
   },
 ] as const;
