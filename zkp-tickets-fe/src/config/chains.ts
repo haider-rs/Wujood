@@ -12,9 +12,9 @@ import { defineChain } from "viem";
 // Nothing else in the codebase needs to change.
 // ─────────────────────────────────────────────────────────────────────────
 
-const CHAIN_ID = 84532;
-const RPC_URL = "https://sepolia.base.org";
-const EXPLORER_URL = "https://wirefluidscan.com";
+const CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID ?? "92533");
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL ?? "https://evm2.wirefluid.com";
+const EXPLORER_URL = process.env.NEXT_PUBLIC_BLOCK_EXPLORER ?? "https://wirefluidscan.com";
 
 export const activeChain = defineChain({
   id: CHAIN_ID,
